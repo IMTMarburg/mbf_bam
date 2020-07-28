@@ -281,6 +281,20 @@ pub fn annotate_barcodes_from_fastq(
         Err(y) => return Err(y.into()),
     }
 }
+/// python wrapper for py_annotate_barcodes_from_fastq
+#[pyfunction]
+pub fn bam_to_fastq(
+    output_filename: &str,
+    input_filename: &str,
+ ) -> PyResult<()> {
+    match bam_manipulation::bam_to_fastq(
+        output_filename,
+        input_filename,
+    ) {
+        Ok(x) => Ok(x),
+        Err(y) => return Err(y.into()),
+    }
+}
 
 /// This module is a python module implemented in Rust.
 #[pymodule]
@@ -293,6 +307,7 @@ fn mbf_bam(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(subtract_bam))?;
     m.add_wrapped(wrap_pyfunction!(quantify_gene_reads))?;
     m.add_wrapped(wrap_pyfunction!(annotate_barcodes_from_fastq))?;
+    m.add_wrapped(wrap_pyfunction!(bam_to_fastq))?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
     Ok(())
