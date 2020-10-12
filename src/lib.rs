@@ -1,4 +1,3 @@
-#![feature(nll)]
 extern crate pyo3;
 extern crate rust_htslib;
 #[macro_use]
@@ -26,7 +25,7 @@ pub enum BamError {
 impl std::convert::Into<PyErr> for BamError {
     fn into(self: BamError) -> PyErr {
         match self {
-            BamError::UnknownError { msg } => exceptions::ValueError::py_err(msg),
+            BamError::UnknownError { msg } => exceptions::PyValueError::new_err(msg),
         }
     }
 }
@@ -39,64 +38,20 @@ impl std::convert::From<PyErr> for BamError {
     }
 }
 
-impl std::convert::From<rust_htslib::bam::ReaderPathError> for BamError {
-    fn from(_error: rust_htslib::bam::ReaderPathError) -> BamError {
-        BamError::UnknownError {
-            msg: "Could not read bam file".to_string(),
-        }
-    }
-}
-impl std::convert::From<rust_htslib::bam::IndexedReaderPathError> for BamError {
-    fn from(_error: rust_htslib::bam::IndexedReaderPathError) -> BamError {
-        BamError::UnknownError {
-            msg: "Could not read bam file".to_string(),
-        }
-    }
-}
-
-impl std::convert::From<rust_htslib::bam::FetchError> for BamError {
-    fn from(_error: rust_htslib::bam::FetchError) -> BamError {
-        BamError::UnknownError {
-            msg: "Fetch error".to_string(),
-        }
-    }
-}
-
-impl std::convert::From<rust_htslib::bam::WriterPathError> for BamError {
-    fn from(_error: rust_htslib::bam::WriterPathError) -> BamError {
-        BamError::UnknownError {
-            msg: "Could not read file".to_string(),
-        }
-    }
-}
-
-impl std::convert::From<rust_htslib::bam::WriteError> for BamError {
-    fn from(_error: rust_htslib::bam::WriteError) -> BamError {
-        BamError::UnknownError {
-            msg: "WriteError".to_string(),
-        }
-    }
-}
-
-impl std::convert::From<rust_htslib::bam::index::IndexBuildError> for BamError {
-    fn from(_error: rust_htslib::bam::index::IndexBuildError) -> BamError {
-        BamError::UnknownError {
-            msg: "WriteError".to_string(),
-        }
-    }
-}
-
 impl std::convert::From<std::io::Error> for BamError {
     fn from(error: std::io::Error) -> BamError {
         BamError::UnknownError {
-            msg: format!("IO Error: {:?}", error).to_string(),
+            msg: format!("std::io::error {:?}", error),
         }
     }
 }
-impl std::convert::From<rust_htslib::bam::AuxWriteError> for BamError {
-    fn from(_error: rust_htslib::bam::AuxWriteError) -> BamError {
+
+
+impl std::convert::From<rust_htslib::bam::errors::Error> for BamError {
+    fn from(error: rust_htslib::bam::errors::Error) -> BamError {
+        let msg = format!("{:?}", error);
         BamError::UnknownError {
-            msg: "AuxWriteError".to_string(),
+            msg: msg.to_string(),
         }
     }
 }
@@ -111,7 +66,7 @@ pub fn calculate_duplicate_distribution(
 ) -> PyResult<HashMap<u32, u64>> {
     match duplicate_distribution::py_calculate_duplicate_distribution(filename, index_filename) {
         Ok(x) => Ok(x),
-        Err(x) => Err(exceptions::ValueError::py_err(format!("{}", x))),
+        Err(x) => Err(exceptions::PyValueError::new_err(format!("{}", x))),
     }
 }
 // /convert the intervals into our interval trees

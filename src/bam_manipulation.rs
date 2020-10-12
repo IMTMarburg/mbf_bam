@@ -1,7 +1,7 @@
 use crate::BamError;
 use bio::io::fastq;
 use flate2::read::GzDecoder;
-use rust_htslib::bam::{index, record::Aux, Header, Read, Reader, Record, Writer};
+use rust_htslib::bam::{index, record::Aux, Header, Read, Reader, Record, Writer, Format};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
@@ -31,7 +31,7 @@ pub fn py_substract_bam(
     }
 
     {
-        let mut output = Writer::from_path(output_filename, &header)?;
+        let mut output = Writer::from_path(output_filename, &header, Format::BAM)?;
         while let Ok(_) = minuend.read(&mut read) {
             if !seen.contains(read.qname()) {
                 output.write(&read)?;
@@ -42,7 +42,7 @@ pub fn py_substract_bam(
     Ok(())
 }
 
-fn read_gz_or_not(input_filename: &str) -> Result<Box<std::io::Read>, BamError> {
+fn read_gz_or_not(input_filename: &str) -> Result<Box<dyn std::io::Read>, BamError> {
     let file = File::open(input_filename)?;
     if input_filename.ends_with(".gz") {
         return Ok(Box::new(GzDecoder::new(file)));
@@ -75,7 +75,7 @@ pub fn py_annotate_barcodes_from_fastq(
         }
     }
     {
-        let mut output = Writer::from_path(output_filename, &header)?;
+        let mut output = Writer::from_path(output_filename, &header, Format::BAM)?;
         let mut read: Record = Record::new();
         while let Ok(_) = input.read(&mut read) {
             let tags = qname_to_tags
@@ -88,7 +88,7 @@ pub fn py_annotate_barcodes_from_fastq(
                     .to_string(),
                 })?;
             for (tag, value) in tags {
-                read.push_aux(tag, &Aux::String(value))?;
+                read.push_aux(tag, &Aux::String(value));
             }
             output.write(&read)?;
         }

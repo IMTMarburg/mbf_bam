@@ -7,8 +7,9 @@ use crate::bam_ext::{open_bam, BamRecordExtensions};
 use crate::BamError;
 use rayon::prelude::*;
 use rust_htslib::bam;
-use rust_htslib::prelude::*;
 use std::collections::{HashMap, HashSet};
+use crate::rust_htslib::bam::Read;
+use std::convert::TryFrom;
 /// python wrapper count_reads_primary_only_right_strand_only_by_barcode
 ///
 pub enum UmiStrategy {
@@ -115,9 +116,9 @@ fn count_reads_primary_only_right_strand_only_by_barcode
              )>, BamError> 
     {
     let mut read: bam::Record = bam::Record::new();
-    bam.fetch(tid, start, stop)?;
+    bam.fetch(tid, start as u64, stop as u64)?;
     let mut positions: HashMap<
-        (u32, Vec<u8>, i32, bool), HashSet<Vec<u8>>> = HashMap::new();;
+        (u32, Vec<u8>, i32, bool), HashSet<Vec<u8>>> = HashMap::new();
     while let Ok(_) = bam.read(&mut read) {
         let mut skipped = false;
         if ((read.pos() as u32) < start) || ((read.pos() as u32) >= stop) {
@@ -156,7 +157,8 @@ fn count_reads_primary_only_right_strand_only_by_barcode
                         let real_position = read.pos(); //TODO
 
                         positions.entry(
-                            (gene_no, barcode, real_position, read.is_reverse())).or_insert_with(|| HashSet::new()).insert(
+                            (gene_no, barcode, 
+                             i32::try_from(real_position).expect("Lib is not u64 read position aware"), read.is_reverse())).or_insert_with(|| HashSet::new()).insert(
                                 umi);
                     }
                 }

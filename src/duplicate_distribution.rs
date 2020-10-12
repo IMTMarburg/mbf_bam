@@ -1,8 +1,8 @@
 use crate::bam_ext::open_bam;
 use failure::Error;
 use rayon::prelude::*;
+use crate::rust_htslib::bam::Read;
 use rust_htslib::bam;
-use rust_htslib::prelude::*;
 use std::collections::HashMap;
 
 fn add_hashmaps(mut a: HashMap<u32, u64>, b: HashMap<u32, u64>) -> HashMap<u32, u64> {

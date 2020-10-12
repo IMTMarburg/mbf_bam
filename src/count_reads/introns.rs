@@ -3,8 +3,8 @@ use crate::bam_ext::{open_bam, BamRecordExtensions};
 use crate::BamError;
 use rayon::prelude::*;
 use rust_htslib::bam;
-use rust_htslib::prelude::*;
 use std::collections::HashMap;
+use crate::rust_htslib::bam::Read;
 
 type IntronsOnOneChromosome = HashMap<(u32, u32), u32>;
 pub type IntronResult = HashMap<String, IntronsOnOneChromosome>;
@@ -28,7 +28,7 @@ fn count_introns(
     stop: u32,
 ) -> Result<IntronsOnOneChromosome, BamError> {
     let mut result = HashMap::new();
-    bam.fetch(tid, start, stop)?;
+    bam.fetch(tid, start as u64, stop as u64)?;
     let mut read: bam::Record = bam::Record::new();
     while let Ok(_) = bam.read(&mut read) {
         // do not count multiple blocks matching in one gene multiple times

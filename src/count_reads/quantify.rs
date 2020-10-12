@@ -1,10 +1,10 @@
 use super::chunked_genome::{Chunk, ChunkedGenome};
+use crate::rust_htslib::bam::Read;
 use super::OurTree;
 use crate::bam_ext::{open_bam, BamRecordExtensions};
 use crate::BamError;
 use rayon::prelude::*;
 use rust_htslib::bam;
-use rust_htslib::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -107,7 +107,7 @@ fn quantify_gene_reads(
     let mut result_reverse: Vec<HashMap<u32, u32>> = vec_hashmap(gene_count as usize);
 
     let mut read: bam::Record = bam::Record::new();
-    bam.fetch(tid, chunk_start, chunk_stop)?;
+    bam.fetch(tid, chunk_start as u64, chunk_stop as u64)?;
     let mut seen = HashSet::new();
     while let Ok(_) = bam.read(&mut read) {
         if ((read.pos() as u32) < chunk_start) || ((read.pos() as u32) >= chunk_stop) {

@@ -1,10 +1,10 @@
 use super::chunked_genome::{Chunk, ChunkedGenome};
+use crate::rust_htslib::bam::Read;
 use super::{add_hashmaps, OurTree};
 use crate::bam_ext::{open_bam, BamRecordExtensions};
 use crate::BamError;
 use rayon::prelude::*;
 use rust_htslib::bam;
-use rust_htslib::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 fn add_dual_hashmaps(
@@ -37,7 +37,7 @@ fn count_reads_in_region_unstranded(
     let mut gene_nos_seen = HashSet::<u32>::new();
     let mut outside_count = 0;
     let mut read: bam::Record = bam::Record::new();
-    bam.fetch(tid, start, stop)?;
+    bam.fetch(tid, start as u64, stop as u64)?;
     while let Ok(_) = bam.read(&mut read) {
         // do not count multiple blocks matching in one gene multiple times
         gene_nos_seen.clear();
@@ -128,7 +128,7 @@ fn count_reads_in_region_stranded(
     let mut gene_nos_seen_reverse = HashSet::<u32>::new();
     let mut outside_count = 0;
     let mut read: bam::Record = bam::Record::new();
-    bam.fetch(tid, start, stop)?;
+    bam.fetch(tid, start as u64, stop as u64)?;
     while let Ok(_) = bam.read(&mut read) {
         // do not count multiple blocks matching in one gene multiple times
         gene_nos_seen_forward.clear();
