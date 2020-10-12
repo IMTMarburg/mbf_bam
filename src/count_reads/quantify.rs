@@ -1,7 +1,7 @@
 use super::chunked_genome::{Chunk, ChunkedGenome};
-use crate::rust_htslib::bam::Read;
 use super::OurTree;
 use crate::bam_ext::{open_bam, BamRecordExtensions};
+use crate::rust_htslib::bam::Read;
 use crate::BamError;
 use rayon::prelude::*;
 use rust_htslib::bam;

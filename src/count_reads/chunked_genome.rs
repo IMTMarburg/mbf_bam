@@ -1,8 +1,8 @@
 use super::OurTree;
-use std::convert::TryFrom;
 use crate::rust_htslib::bam::Read;
 use rust_htslib::bam;
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::str;
 
 pub struct ChunkedGenome {
@@ -80,7 +80,8 @@ impl<'a> Iterator for ChunkedGenomeIterator<'a> {
                 None => return None,
             };
             let tid = self.cg.bam.header().tid(next_chr.as_bytes()).unwrap();
-            let chr_length = u32::try_from(self.cg.bam.header().target_len(tid).unwrap()).expect("Not u64 contig length aware");
+            let chr_length = u32::try_from(self.cg.bam.header().target_len(tid).unwrap())
+                .expect("Not u64 contig length aware");
             self.last_tid = tid;
             self.last_chr_length = chr_length;
             self.last_chr = next_chr.to_string();

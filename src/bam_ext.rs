@@ -44,8 +44,8 @@ impl BamRecordExtensions for bam::Record {
 #[cfg(test)]
 mod tests {
     use crate::bam_ext::BamRecordExtensions;
-    use rust_htslib::bam;
     use crate::rust_htslib::bam::Read;
+    use rust_htslib::bam;
 
     #[test]
     fn spliced_reads() {

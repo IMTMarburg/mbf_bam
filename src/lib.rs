@@ -46,7 +46,6 @@ impl std::convert::From<std::io::Error> for BamError {
     }
 }
 
-
 impl std::convert::From<rust_htslib::bam::errors::Error> for BamError {
     fn from(error: rust_htslib::bam::errors::Error) -> BamError {
         let msg = format!("{:?}", error);
@@ -142,16 +141,17 @@ pub fn count_reads_primary_only_right_strand_only_by_barcode(
     intervals: &PyDict,
     gene_intervals: &PyDict,
     umi_strategy: String,
-) -> PyResult<(
-    Vec<String>,
-    Vec<String>,
-    Vec<(u32, u32, u32)>
-    )>{
+) -> PyResult<(Vec<String>, Vec<String>, Vec<(u32, u32, u32)>)> {
     let trees = py_intervals_to_trees(intervals)?;
     let gene_trees = py_intervals_to_trees(gene_intervals)?;
     let umi_strategy = match umi_strategy.as_ref() {
         "straight" => count_reads::by_barcode::UmiStrategy::Straight,
-        _ => return Err(BamError::UnknownError{msg: "invalid umi_strategy".to_string()}.into()),
+        _ => {
+            return Err(BamError::UnknownError {
+                msg: "invalid umi_strategy".to_string(),
+            }
+            .into())
+        }
     };
     match count_reads::by_barcode::py_count_reads_primary_only_right_strand_only_by_barcode(
         filename,
@@ -164,7 +164,6 @@ pub fn count_reads_primary_only_right_strand_only_by_barcode(
         Err(y) => Err(y.into()),
     }
 }
-
 
 /// python wrapper for py_count_introns
 #[pyfunction]
@@ -238,14 +237,8 @@ pub fn annotate_barcodes_from_fastq(
 }
 /// python wrapper for py_annotate_barcodes_from_fastq
 #[pyfunction]
-pub fn bam_to_fastq(
-    output_filename: &str,
-    input_filename: &str,
- ) -> PyResult<()> {
-    match bam_manipulation::bam_to_fastq(
-        output_filename,
-        input_filename,
-    ) {
+pub fn bam_to_fastq(output_filename: &str, input_filename: &str) -> PyResult<()> {
+    match bam_manipulation::bam_to_fastq(output_filename, input_filename) {
         Ok(x) => Ok(x),
         Err(y) => return Err(y.into()),
     }
@@ -257,7 +250,9 @@ fn mbf_bam(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(calculate_duplicate_distribution))?;
     m.add_wrapped(wrap_pyfunction!(count_reads_unstranded))?;
     m.add_wrapped(wrap_pyfunction!(count_reads_stranded))?;
-    m.add_wrapped(wrap_pyfunction!(count_reads_primary_only_right_strand_only_by_barcode))?;
+    m.add_wrapped(wrap_pyfunction!(
+        count_reads_primary_only_right_strand_only_by_barcode
+    ))?;
     m.add_wrapped(wrap_pyfunction!(count_introns))?;
     m.add_wrapped(wrap_pyfunction!(subtract_bam))?;
     m.add_wrapped(wrap_pyfunction!(quantify_gene_reads))?;

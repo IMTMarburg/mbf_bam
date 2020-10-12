@@ -1,7 +1,7 @@
 use crate::bam_ext::open_bam;
+use crate::rust_htslib::bam::Read;
 use failure::Error;
 use rayon::prelude::*;
-use crate::rust_htslib::bam::Read;
 use rust_htslib::bam;
 use std::collections::HashMap;
 

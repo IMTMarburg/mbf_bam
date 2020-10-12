@@ -1,7 +1,7 @@
 use crate::BamError;
 use bio::io::fastq;
 use flate2::read::GzDecoder;
-use rust_htslib::bam::{index, record::Aux, Header, Read, Reader, Record, Writer, Format};
+use rust_htslib::bam::{index, record::Aux, Format, Header, Read, Reader, Record, Writer};
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::BufReader;
@@ -97,21 +97,20 @@ pub fn py_annotate_barcodes_from_fastq(
     Ok(())
 }
 
-pub fn bam_to_fastq(output_filename: &str, 
-                    input_filename: &str) -> Result<(), BamError> {
+pub fn bam_to_fastq(output_filename: &str, input_filename: &str) -> Result<(), BamError> {
     let mut input = Reader::from_path(input_filename)?;
     let mut output = fastq::Writer::to_file(output_filename)?;
     let mut read: Record = Record::new();
     while let Ok(_) = input.read(&mut read) {
         let q: Vec<u8> = match read.is_reverse() {
-            true => read.qual().iter().map(|x| x+33).rev().collect(),
-            false => read.qual().iter().map(|x| x+33).collect(),
+            true => read.qual().iter().map(|x| x + 33).rev().collect(),
+            false => read.qual().iter().map(|x| x + 33).collect(),
         };
         let seq: Vec<u8> = match read.is_reverse() {
             true => bio::alphabets::dna::revcomp(read.seq().as_bytes()),
-            false => read.seq().as_bytes()
+            false => read.seq().as_bytes(),
         };
-        output.write(std::str::from_utf8(read.qname()).unwrap(), None, &seq, &q )?;
+        output.write(std::str::from_utf8(read.qname()).unwrap(), None, &seq, &q)?;
     }
     Ok(())
 }
