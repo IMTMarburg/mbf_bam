@@ -53,3 +53,5 @@ def job_reheader_and_rename_chromosomes(input_bam_path, output_bam_path, replace
             "mbf_bam.reheader_and_rename_chromosomes", reheader_and_rename_chromosomes
         ),
     )
+
+__version__ = '0.1.5'
