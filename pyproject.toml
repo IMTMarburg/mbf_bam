@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools", "wheel", "setuptools-rust"]
+requires = ["maturin"]
+build-backend = "maturin"
 
 [tool.maturin]
 sdist-include = ["src/mbf_bam"]
