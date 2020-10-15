@@ -120,7 +120,7 @@ fn count_reads_primary_only_right_strand_only_by_barcode(
     let mut read: bam::Record = bam::Record::new();
     bam.fetch(tid, start as u64, stop as u64)?;
     let mut positions: HashMap<(u32, Vec<u8>, i32, bool), HashSet<Vec<u8>>> = HashMap::new();
-    while let Ok(_) = bam.read(&mut read) {
+    while let Ok(true) = bam.read(&mut read) {
         let mut skipped = false;
         if ((read.pos() as u32) < start) || ((read.pos() as u32) >= stop) {
             skipped = true;

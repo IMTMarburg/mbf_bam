@@ -38,7 +38,7 @@ fn count_reads_in_region_unstranded(
     let mut outside_count = 0;
     let mut read: bam::Record = bam::Record::new();
     bam.fetch(tid, start as u64, stop as u64)?;
-    while let Ok(_) = bam.read(&mut read) {
+    while let Ok(true) = bam.read(&mut read) {
         // do not count multiple blocks matching in one gene multiple times
         gene_nos_seen.clear();
         let mut hit = false;
@@ -129,7 +129,7 @@ fn count_reads_in_region_stranded(
     let mut outside_count = 0;
     let mut read: bam::Record = bam::Record::new();
     bam.fetch(tid, start as u64, stop as u64)?;
-    while let Ok(_) = bam.read(&mut read) {
+    while let Ok(true) = bam.read(&mut read) {
         // do not count multiple blocks matching in one gene multiple times
         gene_nos_seen_forward.clear();
         gene_nos_seen_reverse.clear();

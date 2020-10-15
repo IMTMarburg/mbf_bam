@@ -30,7 +30,7 @@ fn count_introns(
     let mut result = HashMap::new();
     bam.fetch(tid, start as u64, stop as u64)?;
     let mut read: bam::Record = bam::Record::new();
-    while let Ok(_) = bam.read(&mut read) {
+    while let Ok(true) = bam.read(&mut read) {
         // do not count multiple blocks matching in one gene multiple times
         if ((read.pos() as u32) < start) || ((read.pos() as u32) >= stop) {
             continue;

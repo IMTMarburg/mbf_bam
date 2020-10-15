@@ -109,7 +109,7 @@ fn quantify_gene_reads(
     let mut read: bam::Record = bam::Record::new();
     bam.fetch(tid, chunk_start as u64, chunk_stop as u64)?;
     let mut seen = HashSet::new();
-    while let Ok(_) = bam.read(&mut read) {
+    while let Ok(true) = bam.read(&mut read) {
         if ((read.pos() as u32) < chunk_start) || ((read.pos() as u32) >= chunk_stop) {
             continue;
         } else {

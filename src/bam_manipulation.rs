@@ -23,7 +23,7 @@ pub fn py_substract_bam(
     let mut seen = HashSet::new();
 
     let mut read: Record = Record::new();
-    while let Ok(_) = subtrahend.read(&mut read) {
+    while let Ok(true) = subtrahend.read(&mut read) {
         if !read.is_unmapped() {
             let q = read.qname().to_owned();
             seen.insert(q);
@@ -32,7 +32,7 @@ pub fn py_substract_bam(
 
     {
         let mut output = Writer::from_path(output_filename, &header, Format::BAM)?;
-        while let Ok(_) = minuend.read(&mut read) {
+        while let Ok(true) = minuend.read(&mut read) {
             if !seen.contains(read.qname()) {
                 output.write(&read)?;
             }
@@ -77,7 +77,7 @@ pub fn py_annotate_barcodes_from_fastq(
     {
         let mut output = Writer::from_path(output_filename, &header, Format::BAM)?;
         let mut read: Record = Record::new();
-        while let Ok(_) = input.read(&mut read) {
+        while let Ok(true) = input.read(&mut read) {
             let tags = qname_to_tags
                 .get(read.qname())
                 .ok_or_else(|| BamError::UnknownError {
@@ -101,7 +101,7 @@ pub fn bam_to_fastq(output_filename: &str, input_filename: &str) -> Result<(), B
     let mut input = Reader::from_path(input_filename)?;
     let mut output = fastq::Writer::to_file(output_filename)?;
     let mut read: Record = Record::new();
-    while let Ok(_) = input.read(&mut read) {
+    while let Ok(true) = input.read(&mut read) {
         let q: Vec<u8> = match read.is_reverse() {
             true => read.qual().iter().map(|x| x + 33).rev().collect(),
             false => read.qual().iter().map(|x| x + 33).collect(),

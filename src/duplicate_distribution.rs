@@ -61,7 +61,7 @@ pub fn py_calculate_duplicate_distribution(
                 let mut read: bam::Record = bam::Record::new();
                 let mut reads_here: HashMap<ReadAtPos, u32> = HashMap::new();
                 let mut last_pos = -1;
-                while let Ok(_) = bam2.read(&mut read) {
+                while let Ok(true) = bam2.read(&mut read) {
                     //*counts.entry(9999999).or_insert(0) += 1; // record total
                     if read.pos() != last_pos {
                         if last_pos != -1 {
