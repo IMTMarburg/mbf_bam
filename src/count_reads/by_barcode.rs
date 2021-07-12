@@ -118,9 +118,10 @@ fn count_reads_primary_only_right_strand_only_by_barcode(
     BamError,
 > {
     let mut read: bam::Record = bam::Record::new();
-    bam.fetch(tid, start as u64, stop as u64)?;
+    bam.fetch((tid, start as u64, stop as u64))?;
     let mut positions: HashMap<(u32, Vec<u8>, i32, bool), HashSet<Vec<u8>>> = HashMap::new();
-    while let Ok(true) = bam.read(&mut read) {
+    while let Some(bam_result) = bam.read(&mut read) {
+        bam_result?;
         let mut skipped = false;
         if ((read.pos() as u32) < start) || ((read.pos() as u32) >= stop) {
             skipped = true;
@@ -147,11 +148,11 @@ fn count_reads_primary_only_right_strand_only_by_barcode(
                                              //if we are on the right strand...
                     if ((strand == 1) && !read.is_reverse()) || ((strand != 1) && read.is_reverse())
                     {
-                        let barcode = read.aux(b"XC").ok_or_else(|| BamError::UnknownError {
+                        let barcode = read.aux(b"XC").map_err(|_| BamError::UnknownError {
                             msg: "missing XC tag".to_string(),
                         })?;
                         let barcode = match barcode {
-                            bam::record::Aux::String(m) => m.to_vec(),
+                            bam::record::Aux::String(m) => m.as_bytes().to_vec(),
                             _ => {
                                 return Err(BamError::UnknownError {
                                     msg: "XC did not contain string".to_string(),
@@ -159,11 +160,11 @@ fn count_reads_primary_only_right_strand_only_by_barcode(
                             }
                         };
 
-                        let umi = read.aux(b"XM").ok_or_else(|| BamError::UnknownError {
+                        let umi = read.aux(b"XM").map_err(|_| BamError::UnknownError {
                             msg: "missing XC tag".to_string(),
                         })?;
                         let umi = match umi {
-                            bam::record::Aux::String(m) => m.to_vec(),
+                            bam::record::Aux::String(m) => m.as_bytes().to_vec(),
                             _ => {
                                 return Err(BamError::UnknownError {
                                     msg: "XM did not contain string".to_string(),

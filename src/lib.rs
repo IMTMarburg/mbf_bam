@@ -46,8 +46,18 @@ impl std::convert::From<std::io::Error> for BamError {
     }
 }
 
-impl std::convert::From<rust_htslib::bam::errors::Error> for BamError {
-    fn from(error: rust_htslib::bam::errors::Error) -> BamError {
+impl std::convert::From<bio::io::fastq::Error> for BamError {
+    fn from(error: bio::io::fastq::Error) -> BamError {
+        let msg = format!("{:?}", error);
+        BamError::UnknownError {
+            msg: msg.to_string(),
+        }
+    }
+}
+
+
+impl std::convert::From<rust_htslib::errors::Error> for BamError {
+    fn from(error: rust_htslib::errors::Error) -> BamError {
         let msg = format!("{:?}", error);
         BamError::UnknownError {
             msg: msg.to_string(),

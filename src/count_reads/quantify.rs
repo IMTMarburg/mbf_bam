@@ -107,9 +107,11 @@ fn quantify_gene_reads(
     let mut result_reverse: Vec<HashMap<u32, u32>> = vec_hashmap(gene_count as usize);
 
     let mut read: bam::Record = bam::Record::new();
-    bam.fetch(tid, chunk_start as u64, chunk_stop as u64)?;
+    bam.fetch((tid, chunk_start as u64, chunk_stop as u64))?;
     let mut seen = HashSet::new();
-    while let Ok(true) = bam.read(&mut read) {
+    while let Some(result) = bam.read(&mut read) {
+        result?;
+
         if ((read.pos() as u32) < chunk_start) || ((read.pos() as u32) >= chunk_stop) {
             continue;
         } else {

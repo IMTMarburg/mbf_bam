@@ -1,7 +1,7 @@
 use super::chunked_genome::{Chunk, ChunkedGenome};
 use super::{add_hashmaps, OurTree};
 use crate::bam_ext::{open_bam, BamRecordExtensions};
-use crate::rust_htslib::bam::Read;
+use crate::rust_htslib::bam::{Read , record::Aux};
 use crate::BamError;
 use rayon::prelude::*;
 use rust_htslib::bam;
@@ -37,8 +37,9 @@ fn count_reads_in_region_unstranded(
     let mut gene_nos_seen = HashSet::<u32>::new();
     let mut outside_count = 0;
     let mut read: bam::Record = bam::Record::new();
-    bam.fetch(tid, start as u64, stop as u64)?;
-    while let Ok(true) = bam.read(&mut read) {
+    bam.fetch((tid, start as u64, stop as u64))?;
+    while let Some(bam_result) = bam.read(&mut read) {
+        bam_result?;
         // do not count multiple blocks matching in one gene multiple times
         gene_nos_seen.clear();
         let mut hit = false;
@@ -63,7 +64,10 @@ fn count_reads_in_region_unstranded(
                     let entry = r.data();
                     let gene_no = (*entry).0;
                     let nh = read.aux(b"NH");
-                    let nh = nh.map_or(1, |aux| aux.integer());
+                    let nh = nh.map_or(1, |aux| match aux {
+                        Aux::I32(v) => v,
+                        _ => 1
+                    });
                     if nh == 1 {
                         gene_nos_seen.insert(gene_no);
                     } else {
@@ -128,8 +132,9 @@ fn count_reads_in_region_stranded(
     let mut gene_nos_seen_reverse = HashSet::<u32>::new();
     let mut outside_count = 0;
     let mut read: bam::Record = bam::Record::new();
-    bam.fetch(tid, start as u64, stop as u64)?;
-    while let Ok(true) = bam.read(&mut read) {
+    bam.fetch((tid, start as u64, stop as u64))?;
+    while let Some(bam_result) = bam.read(&mut read) {
+        bam_result?;
         // do not count multiple blocks matching in one gene multiple times
         gene_nos_seen_forward.clear();
         gene_nos_seen_reverse.clear();
@@ -147,7 +152,10 @@ fn count_reads_in_region_stranded(
                     let gene_no = (*entry).0;
                     let strand = (*entry).1; // this is 1 or -1
                     let nh = read.aux(b"NH");
-                    let nh = nh.map_or(1, |aux| aux.integer());
+                    let nh = nh.map_or(1, |aux| match aux {
+                        Aux::I32(v) => v,
+                        _ => 1
+                    });
                     if ((strand == 1) && !read.is_reverse()) || ((strand != 1) && read.is_reverse())
                     {
                         // read is in correct orientation

@@ -28,9 +28,10 @@ fn count_introns(
     stop: u32,
 ) -> Result<IntronsOnOneChromosome, BamError> {
     let mut result = HashMap::new();
-    bam.fetch(tid, start as u64, stop as u64)?;
+    bam.fetch((tid, start as u64, stop as u64))?;
     let mut read: bam::Record = bam::Record::new();
-    while let Ok(true) = bam.read(&mut read) {
+    while let Some(bam_result) = bam.read(&mut read) {
+        bam_result?;
         // do not count multiple blocks matching in one gene multiple times
         if ((read.pos() as u32) < start) || ((read.pos() as u32) >= stop) {
             continue;

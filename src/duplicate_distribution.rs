@@ -55,13 +55,16 @@ pub fn py_calculate_duplicate_distribution(
             .map(|tid| {
                 let mut bam2 = open_bam(filename, index_filename).unwrap();
 
-                bam2.fetch(tid, 0, bam2.header().target_len(tid).unwrap())
+                bam2.fetch((tid, 0, bam2.header().target_len(tid).unwrap()))
                     .unwrap();
                 let mut counts: HashMap<u32, u64> = HashMap::new();
                 let mut read: bam::Record = bam::Record::new();
                 let mut reads_here: HashMap<ReadAtPos, u32> = HashMap::new();
                 let mut last_pos = -1;
-                while let Ok(true) = bam2.read(&mut read) {
+                while let Some(result) = bam2.read(&mut read) {
+                    if let Err(_) = result {
+                        panic!("Bam parsing failed {} {:?}", filename, index_filename);
+                    }
                     //*counts.entry(9999999).or_insert(0) += 1; // record total
                     if read.pos() != last_pos {
                         if last_pos != -1 {
