@@ -55,7 +55,6 @@ impl std::convert::From<bio::io::fastq::Error> for BamError {
     }
 }
 
-
 impl std::convert::From<rust_htslib::errors::Error> for BamError {
     fn from(error: rust_htslib::errors::Error) -> BamError {
         let msg = format!("{:?}", error);
@@ -128,6 +127,7 @@ pub fn count_reads_stranded(
     intervals: &PyDict,
     gene_intervals: &PyDict,
     each_read_counts_once: Option<bool>,
+    matching_reads_output_bam_filename: Option<&str>,
 ) -> PyResult<(HashMap<String, u32>, HashMap<String, u32>)> {
     let trees = py_intervals_to_trees(intervals)?;
     let gene_trees = py_intervals_to_trees(gene_intervals)?;
@@ -137,6 +137,7 @@ pub fn count_reads_stranded(
         trees,
         gene_trees,
         each_read_counts_once.unwrap_or(false),
+        matching_reads_output_bam_filename,
     ) {
         Ok(x) => x,
         Err(y) => return Err(y.into()),

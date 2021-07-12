@@ -1,11 +1,12 @@
 use super::chunked_genome::{Chunk, ChunkedGenome};
 use super::{add_hashmaps, OurTree};
 use crate::bam_ext::{open_bam, BamRecordExtensions};
-use crate::rust_htslib::bam::{Read , record::Aux};
+use crate::rust_htslib::bam::{record::Aux, Read};
 use crate::BamError;
 use rayon::prelude::*;
 use rust_htslib::bam;
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, RwLock};
 
 fn add_dual_hashmaps(
     a: (HashMap<String, u32>, HashMap<String, u32>),
@@ -71,7 +72,7 @@ fn count_reads_in_region_unstranded(
                         Aux::U16(v) => v as u32,
                         Aux::I32(v) => v as u32,
                         Aux::U32(v) => v,
-                        _ => 1
+                        _ => 1,
                     });
                     if nh == 1 {
                         gene_nos_seen.insert(gene_no);
@@ -113,6 +114,16 @@ fn count_reads_in_region_unstranded(
     }
     Ok((result, outside_count))
 }
+
+///Injection point to do something with each read that actually matched
+trait ReadCatcher {
+    fn catch(&mut self, read: &bam::Record);
+}
+
+impl ReadCatcher for () {
+    fn catch(&mut self, _read: &bam::Record) {}
+}
+
 ///
 /// count_reads_in_region_stranded
 //
@@ -120,7 +131,7 @@ fn count_reads_in_region_unstranded(
 /// matching them to the tree entries.
 /// returns two vectors to be translated from gene_no
 /// to gene_id: matching, reverse matching
-fn count_reads_in_region_stranded(
+fn count_reads_in_region_stranded<T>(
     mut bam: bam::IndexedReader,
     tree: &OurTree,
     tid: u32,
@@ -128,7 +139,11 @@ fn count_reads_in_region_stranded(
     stop: u32,
     gene_count: u32,
     each_read_counts_once: bool,
-) -> Result<(Vec<u32>, Vec<u32>, u32), BamError> {
+    mut read_catcher: T,
+) -> Result<(Vec<u32>, Vec<u32>, u32), BamError>
+where
+    T: ReadCatcher,
+{
     let mut result_forward = vec![0; gene_count as usize];
     let mut result_reverse = vec![0; gene_count as usize];
     let mut multimapper_dedup_forward: HashMap<u32, HashSet<Vec<u8>>> = HashMap::new();
@@ -144,11 +159,12 @@ fn count_reads_in_region_stranded(
         gene_nos_seen_forward.clear();
         gene_nos_seen_reverse.clear();
         let mut hit = false;
-        let mut skipped = false;
+        let mut skipped = false; //skipped are reads that don't belong to this region, but do get fetched by fetch.
         if ((read.pos() as u32) < start) || ((read.pos() as u32) >= stop) {
             skipped = true;
         }
         if !skipped {
+            let mut gene_hit = false;
             let blocks = read.blocks();
             for iv in blocks.iter() {
                 for r in tree.find(iv.0..iv.1) {
@@ -164,21 +180,23 @@ fn count_reads_in_region_stranded(
                         Aux::U16(v) => v as u32,
                         Aux::I32(v) => v as u32,
                         Aux::U32(v) => v,
-                        _ => 1
+                        _ => 1,
                     });
                     if ((strand == 1) && !read.is_reverse()) || ((strand != 1) && read.is_reverse())
                     {
-                        // read is in correct orientation
+                        // read is in correct orientation - a hit
                         if nh == 1 {
                             gene_nos_seen_forward.insert(gene_no);
+                            gene_hit = true;
                         } else {
                             let hs = multimapper_dedup_forward
                                 .entry(gene_no)
                                 .or_insert_with(HashSet::new);
                             hs.insert(read.qname().to_vec());
+                            gene_hit = true;
                         }
                     } else {
-                        // read is in inverse orientation
+                        // read is in incorrect orientation - not a hit
                         if nh == 1 {
                             gene_nos_seen_reverse.insert(gene_no);
                         } else {
@@ -199,7 +217,11 @@ fn count_reads_in_region_stranded(
                     }
                 }
             }
+            if gene_hit {
+                read_catcher.catch(&read);
+            }
         }
+
         if !hit && !skipped {
             outside_count += 1;
         }
@@ -290,6 +312,14 @@ fn to_hashmap(counts: Vec<u32>, gene_ids: &Vec<String>, chr: &str) -> HashMap<St
     result
 }
 
+impl ReadCatcher for Arc<RwLock<HashSet<String>>> {
+    fn catch(&mut self, read: &bam::Record) {
+        self.write()
+            .unwrap()
+            .insert(std::str::from_utf8(read.qname()).unwrap().to_string());
+    }
+}
+
 /// python wrapper for py_count_reads_stranded
 pub fn py_count_reads_stranded(
     filename: &str,
@@ -297,6 +327,7 @@ pub fn py_count_reads_stranded(
     trees: HashMap<String, (OurTree, Vec<String>)>,
     gene_trees: HashMap<String, (OurTree, Vec<String>)>,
     each_read_counts_once: bool,
+    matching_read_output_bam_filename: Option<&str>,
 ) -> Result<(HashMap<String, u32>, HashMap<String, u32>), BamError> {
     //check whether the bam file can be openend
     //and we need it for the chunking
@@ -306,22 +337,41 @@ pub fn py_count_reads_stranded(
     let cg = ChunkedGenome::new(gene_trees, bam); // can't get the ParallelBridge to work with our lifetimes.
     let it: Vec<Chunk> = cg.iter().collect();
     let pool = rayon::ThreadPoolBuilder::new().build().unwrap();
-    pool.install(|| {
+    let matching_read_catcher = match &matching_read_output_bam_filename {
+        None => None,
+        Some(_) => Some(Arc::new(RwLock::new(HashSet::new()))),
+    };
+
+    let result = pool.install(|| {
         let result = it
             .into_par_iter()
             .map(|chunk| {
                 let bam = open_bam(filename, index_filename).unwrap();
                 let (tree, gene_ids) = trees.get(&chunk.chr).unwrap();
 
-                let both_counts = count_reads_in_region_stranded(
-                    bam,
-                    tree,
-                    chunk.tid,
-                    chunk.start,
-                    chunk.stop,
-                    gene_ids.len() as u32,
-                    each_read_counts_once,
-                );
+                let both_counts = match &matching_read_catcher {
+                    None => count_reads_in_region_stranded(
+                        bam,
+                        tree,
+                        chunk.tid,
+                        chunk.start,
+                        chunk.stop,
+                        gene_ids.len() as u32,
+                        each_read_counts_once,
+                        (),
+                    ),
+                    Some(catcher) => count_reads_in_region_stranded(
+                        bam,
+                        tree,
+                        chunk.tid,
+                        chunk.start,
+                        chunk.stop,
+                        gene_ids.len() as u32,
+                        each_read_counts_once,
+                        catcher.clone(),
+                    ),
+                };
+
                 let both_counts = both_counts.unwrap_or_else(|_| (Vec::new(), Vec::new(), 0));
 
                 let mut result = (
@@ -336,6 +386,32 @@ pub fn py_count_reads_stranded(
                 add_dual_hashmaps,
             );
         //.fold(HashMap::<String, u32>::new(), add_hashmaps);
+        //TODO:
+        //write actually to bam if catcher..
         Ok(result)
-    })
+    });
+    match matching_read_catcher {
+        Some(catcher) => {
+            let catcher = Arc::try_unwrap(catcher).unwrap().into_inner().unwrap();
+            let output_filename = matching_read_output_bam_filename.unwrap();
+            let mut bam_in = open_bam(filename, index_filename).unwrap();
+            bam_in.fetch(bam::FetchDefinition::All);
+
+            let header = bam::Header::from_template(bam_in.header());
+            {
+                let mut bam_out =
+                    bam::Writer::from_path(output_filename, &header, bam::Format::Bam)?;
+                for read in bam_in.rc_records() {
+                    let read = read?; //if it fails her something is *very* wrong
+                    if catcher.contains(std::str::from_utf8(read.qname()).unwrap()) {
+                        bam_out.write(&read)?;
+                    }
+                }
+            }
+            bam::index::build(output_filename, None, bam::index::Type::Bai, 4)
+                .expect("Failed to build bam index");
+        }
+        None => {}
+    };
+    result
 }
