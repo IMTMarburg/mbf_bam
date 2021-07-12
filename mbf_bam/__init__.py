@@ -54,4 +54,4 @@ def job_reheader_and_rename_chromosomes(input_bam_path, output_bam_path, replace
         ),
     )
 
-__version__ = '0.1.7'
+__version__ = '0.1.8'

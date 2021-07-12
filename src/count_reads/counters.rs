@@ -65,7 +65,12 @@ fn count_reads_in_region_unstranded(
                     let gene_no = (*entry).0;
                     let nh = read.aux(b"NH");
                     let nh = nh.map_or(1, |aux| match aux {
-                        Aux::I32(v) => v,
+                        Aux::I8(v) => v as u32,
+                        Aux::U8(v) => v as u32,
+                        Aux::I16(v) => v as u32,
+                        Aux::U16(v) => v as u32,
+                        Aux::I32(v) => v as u32,
+                        Aux::U32(v) => v,
                         _ => 1
                     });
                     if nh == 1 {
@@ -153,7 +158,12 @@ fn count_reads_in_region_stranded(
                     let strand = (*entry).1; // this is 1 or -1
                     let nh = read.aux(b"NH");
                     let nh = nh.map_or(1, |aux| match aux {
-                        Aux::I32(v) => v,
+                        Aux::I8(v) => v as u32,
+                        Aux::U8(v) => v as u32,
+                        Aux::I16(v) => v as u32,
+                        Aux::U16(v) => v as u32,
+                        Aux::I32(v) => v as u32,
+                        Aux::U32(v) => v,
                         _ => 1
                     });
                     if ((strand == 1) && !read.is_reverse()) || ((strand != 1) && read.is_reverse())

@@ -91,7 +91,7 @@ pub fn py_annotate_barcodes_from_fastq(
                     .to_string(),
                 })?;
             for (tag, value) in tags {
-                read.push_aux(tag, Aux::String(std::str::from_utf8(value).unwrap()));
+                read.push_aux(tag, Aux::String(std::str::from_utf8(value).unwrap())).unwrap();
             }
             output.write(&read)?;
         }
