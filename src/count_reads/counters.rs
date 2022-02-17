@@ -395,7 +395,7 @@ pub fn py_count_reads_stranded(
             let catcher = Arc::try_unwrap(catcher).unwrap().into_inner().unwrap();
             let output_filename = matching_read_output_bam_filename.unwrap();
             let mut bam_in = open_bam(filename, index_filename).unwrap();
-            bam_in.fetch(bam::FetchDefinition::All);
+            bam_in.fetch(bam::FetchDefinition::All)?;
 
             let header = bam::Header::from_template(bam_in.header());
             {

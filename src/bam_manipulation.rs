@@ -3,7 +3,7 @@ use bio::io::fastq;
 use flate2::read::GzDecoder;
 use rust_htslib::bam::{index, record::Aux, Format, Header, Read, Reader, Record, Writer};
 use std::collections::{HashMap, HashSet};
-use std::fs::File;
+use ex::fs::File;
 use std::io::BufReader;
 use std::str;
 

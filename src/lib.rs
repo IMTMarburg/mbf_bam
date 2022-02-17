@@ -45,6 +45,14 @@ impl std::convert::From<std::io::Error> for BamError {
         }
     }
 }
+impl std::convert::From<ex::io::Error> for BamError {
+    fn from(error: ex::io::Error) -> BamError {
+        BamError::UnknownError {
+            msg: format!("ex::io::error {:?}", error),
+        }
+    }
+}
+
 
 impl std::convert::From<bio::io::fastq::Error> for BamError {
     fn from(error: bio::io::fastq::Error) -> BamError {
