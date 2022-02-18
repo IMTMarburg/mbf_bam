@@ -3,10 +3,12 @@ mod chunked_genome;
 mod counters;
 mod introns;
 mod quantify;
+mod coverage;
 
 pub use counters::{py_count_reads_stranded, py_count_reads_unstranded};
 pub use introns::{py_count_introns, IntronResult};
 pub use quantify::py_quantify_gene_reads;
+pub use coverage::{calculate_coverage, Interval};
 
 use bio::data_structures::interval_tree::IntervalTree;
 use pyo3::prelude::*;

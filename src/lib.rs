@@ -6,7 +6,7 @@ extern crate bio;
 
 //use failure::Error;
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
 use pyo3::{exceptions, PyErr, PyResult};
 use std::collections::HashMap;
@@ -16,24 +16,27 @@ mod bam_manipulation;
 mod count_reads;
 mod duplicate_distribution;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Fail, Clone)]
 pub enum BamError {
     #[fail(display = "unknown error: {}", msg)]
     UnknownError { msg: String },
 }
 
-impl std::convert::Into<PyErr> for BamError {
-    fn into(self: BamError) -> PyErr {
-        match self {
-            BamError::UnknownError { msg } => exceptions::PyValueError::new_err(msg),
-        }
-    }
+fn value_error(msg: String) -> PyErr {
+    exceptions::PyValueError::new_err(msg)
 }
 
 impl std::convert::From<PyErr> for BamError {
     fn from(error: PyErr) -> BamError {
         BamError::UnknownError {
             msg: format!("Python error {:?}", error),
+        }
+    }
+}
+impl std::convert::From<BamError> for PyErr {
+    fn from(error: BamError) -> PyErr {
+        match error {
+            BamError::UnknownError { msg } => exceptions::PyValueError::new_err(msg),
         }
     }
 }
@@ -52,7 +55,6 @@ impl std::convert::From<ex::io::Error> for BamError {
         }
     }
 }
-
 
 impl std::convert::From<bio::io::fastq::Error> for BamError {
     fn from(error: bio::io::fastq::Error) -> BamError {
@@ -263,6 +265,77 @@ pub fn bam_to_fastq(output_filename: &str, input_filename: &str) -> PyResult<()>
     }
 }
 
+/// python wrapper for calculate_coverage
+/// ie. read coverage at each basepair.
+/// filename/index_filename point to a .bam/.bai
+/// intervals must be a list of tuples (chr, start, stop, flip(bool))
+#[pyfunction]
+pub fn calculate_coverage(
+    filename: &str,
+    index_filename: Option<&str>,
+    intervals: &PyList,
+) -> PyResult<Vec<Vec<u32>>> {
+    let iv_list: &PyList = intervals.extract()?;
+    let mut input = Vec::new();
+    for iv_entry_obj in iv_list.iter() {
+        let iv_tuple: &PyTuple = iv_entry_obj.extract()?;
+        let chr: &str = iv_tuple.get_item(0).extract()?;
+        let start: u32 = iv_tuple.get_item(1).extract()?;
+        let stop: u32 = iv_tuple.get_item(2).extract()?;
+        let flip: bool = iv_tuple.get_item(3).extract()?;
+        let iv = count_reads::Interval::new(chr, start, stop, flip);
+        input.push(iv);
+    }
+    match count_reads::calculate_coverage(filename, index_filename, &input) {
+        Ok(x) => Ok(x),
+        Err(y) => Err(y.into()),
+    }
+}
+
+/// calculate coverage at each basepair in the intervals
+/// then sum over all the intervals.
+/// requires that all intervals are the same length.
+#[pyfunction]
+pub fn calculate_coverage_sum(
+    filename: &str,
+    index_filename: Option<&str>,
+    intervals: &PyList,
+) -> PyResult<Vec<u64>> {
+    let iv_list: &PyList = intervals.extract()?;
+    let mut input = Vec::new();
+    let mut size: Option<u32> = None;
+    for iv_entry_obj in iv_list.iter() {
+        let iv_tuple: &PyTuple = iv_entry_obj.extract()?;
+        let chr: &str = iv_tuple.get_item(0).extract()?;
+        let start: u32 = iv_tuple.get_item(1).extract()?;
+        let stop: u32 = iv_tuple.get_item(2).extract()?;
+        let flip: bool = iv_tuple.get_item(3).extract()?;
+        let iv = count_reads::Interval::new(chr, start, stop, flip);
+        match size {
+            Option::None => size = Some(stop - start),
+            Option::Some(size) => {
+                if size != (stop - start) {
+                    return Err(value_error("Intervals of unequal size passed".to_string()));
+                }
+            }
+        }
+        input.push(iv);
+    }
+    match size {
+        Option::None => return Err(value_error("Intervals was empty".to_string())),
+        Option::Some(size) => {
+            let covs = count_reads::calculate_coverage(filename, index_filename, &input)?;
+            let mut res = vec![0u64; size as usize];
+            for c in covs.iter() {
+                for (ii, vi) in c.iter().enumerate() {
+                    res[ii] += *vi as u64;
+                }
+            }
+            Ok(res)
+        }
+    }
+}
+
 /// This module is a python module implemented in Rust.
 #[pymodule]
 fn mbf_bam(_py: Python, m: &PyModule) -> PyResult<()> {
@@ -277,6 +350,8 @@ fn mbf_bam(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(quantify_gene_reads))?;
     m.add_wrapped(wrap_pyfunction!(annotate_barcodes_from_fastq))?;
     m.add_wrapped(wrap_pyfunction!(bam_to_fastq))?;
+    m.add_wrapped(wrap_pyfunction!(calculate_coverage))?;
+    m.add_wrapped(wrap_pyfunction!(calculate_coverage_sum))?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
     Ok(())

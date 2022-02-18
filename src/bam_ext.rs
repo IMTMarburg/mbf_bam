@@ -1,15 +1,16 @@
 use crate::BamError;
 use rust_htslib::bam;
 use rust_htslib::bam::ext::BamRecordExtensions as htslib_record_extensions;
+use std::path::Path;
 
 /// Wrapper for opening a BAM file.
 pub fn open_bam(
-    bam_filename: &str,
-    bai_filename: Option<&str>,
+    bam_filename: impl AsRef<Path>,
+    bai_filename: Option<impl AsRef<Path>>,
 ) -> Result<bam::IndexedReader, BamError> {
     let bam = match bai_filename {
-        Some(ifn) => bam::IndexedReader::from_path_and_index(bam_filename, ifn),
-        _ => bam::IndexedReader::from_path(bam_filename),
+        Some(ifn) => bam::IndexedReader::from_path_and_index(bam_filename.as_ref(), ifn.as_ref()),
+        _ => bam::IndexedReader::from_path(bam_filename.as_ref()),
     };
     match bam {
         Ok(x) => Ok(x),
