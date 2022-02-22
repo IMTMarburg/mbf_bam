@@ -78,7 +78,7 @@ class TestCoverage:
         forward = calculate_coverage(input, None, intervals)
         forward_sum = calculate_coverage_sum(input, None, intervals)
         npf = np.array(forward)
-        assert (npf.sum().sum() > 0)
+        assert npf.sum().sum() > 0
         assert npf.shape[0] == len(intervals)
         assert len(forward_sum) == 1000
         assert (npf.sum(axis=0) == forward_sum).all()
@@ -92,3 +92,18 @@ class TestCoverage:
         ]
         with pytest.raises(ValueError):
             calculate_coverage_sum(input, None, intervals)
+
+    def test_negative(self):
+        input = str(get_sample_path("mbf_align/chipseq_chr22.bam"))
+        k = 17_000_000  # first 100k are empty...
+        intervals = [
+            ("chr22", 0, k, False),
+            ("chr22", -10, k, False),
+        ]
+        forward = calculate_coverage(input, None, intervals)
+        assert len(forward) == 2
+        assert len(forward[0]) == k
+        assert len(forward[1]) == k + 10
+        assert np.sum(forward[0]) > 0
+        assert np.sum(forward[1]) > 0
+        assert np.sum(forward[0]) == np.sum(forward[1])

@@ -280,8 +280,8 @@ pub fn calculate_coverage(
     for iv_entry_obj in iv_list.iter() {
         let iv_tuple: &PyTuple = iv_entry_obj.extract()?;
         let chr: &str = iv_tuple.get_item(0).extract()?;
-        let start: u32 = iv_tuple.get_item(1).extract()?;
-        let stop: u32 = iv_tuple.get_item(2).extract()?;
+        let start: i64 = iv_tuple.get_item(1).extract()?;
+        let stop: i64 = iv_tuple.get_item(2).extract()?;
         let flip: bool = iv_tuple.get_item(3).extract()?;
         let iv = count_reads::Interval::new(chr, start, stop, flip);
         input.push(iv);
@@ -303,12 +303,12 @@ pub fn calculate_coverage_sum(
 ) -> PyResult<Vec<u64>> {
     let iv_list: &PyList = intervals.extract()?;
     let mut input = Vec::new();
-    let mut size: Option<u32> = None;
+    let mut size: Option<i64> = None;
     for iv_entry_obj in iv_list.iter() {
         let iv_tuple: &PyTuple = iv_entry_obj.extract()?;
         let chr: &str = iv_tuple.get_item(0).extract()?;
-        let start: u32 = iv_tuple.get_item(1).extract()?;
-        let stop: u32 = iv_tuple.get_item(2).extract()?;
+        let start: i64 = iv_tuple.get_item(1).extract()?;
+        let stop: i64 = iv_tuple.get_item(2).extract()?;
         let flip: bool = iv_tuple.get_item(3).extract()?;
         let iv = count_reads::Interval::new(chr, start, stop, flip);
         match size {

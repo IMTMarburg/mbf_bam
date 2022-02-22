@@ -11,13 +11,13 @@ use std::path::{Path, PathBuf};
 
 pub struct Interval<'a> {
     chr: &'a str,
-    start: u32,
-    stop: u32,
+    start: i64,
+    stop: i64,
     flip: bool,
 }
 
 impl<'a> Interval<'a> {
-    pub fn new(chr: &'a str, start: u32, stop: u32, flip: bool) -> Self {
+    pub fn new(chr: &'a str, start: i64, stop: i64, flip: bool) -> Self {
         Interval {
             chr,
             start,
@@ -81,8 +81,8 @@ fn coverage_in_intervals(
 fn coverage_in_interval(
     bam: &mut bam::IndexedReader,
     chr: &str,
-    start: u32,
-    stop: u32,
+    start: i64,
+    stop: i64,
 ) -> Result<Vec<u32>, BamError> {
     let mut res = vec![0; (stop - start) as usize];
     let mut read: bam::Record = bam::Record::new();
@@ -93,7 +93,7 @@ fn coverage_in_interval(
             msg: format!("Chromosome {} not found", &chr),
         })?;
 
-    bam.fetch((tid, start as u64, stop as u64))?;
+    bam.fetch((tid, start, stop))?;
 
     while let Some(result) = bam.read(&mut read) {
         result?;
@@ -101,8 +101,8 @@ fn coverage_in_interval(
         let blocks = read.blocks();
         for iv in blocks.iter() {
             for pos in iv.0..iv.1 {
-                if ((pos as u32) >= start) && ((pos as u32) < stop) {
-                    res[(pos - start) as usize] += 1;
+                if ((pos as i64) >= start) && ((pos as i64) < stop) {
+                    res[((pos as i64) - start) as usize] += 1;
                 }
             }
         }
