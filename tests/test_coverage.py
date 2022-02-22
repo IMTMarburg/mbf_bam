@@ -69,35 +69,6 @@ class TestCoverage:
 
     def test_cov_sum(self):
         input = str(get_sample_path("mbf_align/chipseq_chr22.bam"))
-        intervals = [
-            ("chr22", 16097540 - 1, 16097652 - 1, False),
-        ]
-        forward = calculate_coverage(input, None, intervals)
-        assert np.sum(forward[0]) == 36
-
-        intervals = [
-            ("chr22", 16097552 - 1, 16097552 - 1 + 36, False),
-        ]
-        forward = calculate_coverage(input, None, intervals)
-        assert np.sum(forward[0]) == 36
-
-        intervals = [
-            ("chr22", 16097552 - 1 + 3, 16097552 - 1 + 36 - 2, False),
-        ]
-        forward = calculate_coverage(input, None, intervals)
-        assert np.sum(forward[0]) == 36 - 3 - 2
-        assert np.sum(forward[0]) == len(forward[0])
-
-        intervals = [
-            ("chr22", 51038715 - 1, 51038746, False),
-        ]
-        forward = calculate_coverage(input, None, intervals)
-        # fmt: off
-        assert forward[0] == [ 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, ]
-        # fmt: on
-
-    def test_cov_sum(self):
-        input = str(get_sample_path("mbf_align/chipseq_chr22.bam"))
         start = 16_000_000
         stop = start + 1_000_000
         intervals = []
