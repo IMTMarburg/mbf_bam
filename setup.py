@@ -15,7 +15,7 @@ from setuptools import setup
 try:
     from setuptools_rust import Binding, RustExtension
     has_rust=True
-except importError:
+except ImportError:
     has_rust=False
     pass
 
