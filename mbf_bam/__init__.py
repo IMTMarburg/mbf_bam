@@ -1,12 +1,3 @@
-from pkg_resources import get_distribution, DistributionNotFound
-
-try:
-    __version__ = get_distribution(__name__).version
-except DistributionNotFound:  # pragma: no cover
-    # package is not installed
-    __version__ = "unknown"
-    pass
-
 try:  # we need to ignore the import error (module not build) for poetry to be able to determine the version
     from .mbf_bam import *
     from pathlib import Path
@@ -54,4 +45,4 @@ def job_reheader_and_rename_chromosomes(input_bam_path, output_bam_path, replace
         ),
     )
 
-__version__ = '0.1.8'
+__version__ = '0.2.0'
