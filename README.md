@@ -5,6 +5,11 @@ Fast, multi-core read counters and the like based on the BAM fileformat and rust
 
 Part of the mbf_* suite from https://github.com/IMTMarburg
 
+build wheels using
+'docker run --rm -v $(pwd):/io ghcr.io/pyo3/maturin build --release -f'
+then 'twine upload target/wheels/*'
 
-publish using 'docker run --rm -v $(pwd):/io ghcr.io/pyo3/maturin publish # or other maturin arguments'
-for the manywheel stuff
+
+To use in nix, a flake that provides a function taking
+nixpkgs, mach-nix and the version to report to nix is
+provided.
