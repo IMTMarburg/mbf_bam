@@ -11,8 +11,7 @@
   }: let
     inherit (import-cargo.builders) importCargo;
   in let
-    # pass in nixpkgs, mach-nix and what you want it to report back as a version
-    mach-nix-build-python-package = pkgs: pythonpkgs: outside_version: let
+    build_mbf_bam = pkgs: pythonpkgs: outside_version: let
       cargo_in = importCargo {
         lockFile = ./Cargo.lock;
         inherit pkgs;
@@ -37,6 +36,7 @@
         '';
       };
   in {
-    builder = build_mbf_bam;
+    # pass in nixpkgs, mach-nix and what you want it to report back as a version
+    mach-nix-build-python-package = build_mbf_bam;
   };
 }
