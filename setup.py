@@ -12,7 +12,12 @@ import sys
 from pkg_resources import require, VersionConflict
 from setuptools import setup
 
-from setuptools_rust import Binding, RustExtension
+try:
+    from setuptools_rust import Binding, RustExtension
+    has_rust=True
+except ImportError:
+    has_rust=False
+    pass
 
 try:
     require("setuptools>=38.3")
@@ -29,8 +34,11 @@ except VersionConflict:
 
 
 if __name__ == "__main__":
-    setup(
+    if has_rust:
+        setup(
         rust_extensions=[
             RustExtension("mbf_bam.mbf_bam", binding=Binding.PyO3, debug=False)
         ],
     )
+    else:
+        setup()
