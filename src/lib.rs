@@ -274,6 +274,7 @@ pub fn calculate_coverage(
     filename: &str,
     index_filename: Option<&str>,
     intervals: &PyList,
+    extend_reads: u32,
 ) -> PyResult<Vec<Vec<u32>>> {
     let iv_list: &PyList = intervals.extract()?;
     let mut input = Vec::new();
@@ -286,7 +287,7 @@ pub fn calculate_coverage(
         let iv = count_reads::Interval::new(chr, start, stop, flip);
         input.push(iv);
     }
-    match count_reads::calculate_coverage(filename, index_filename, &input) {
+    match count_reads::calculate_coverage(filename, index_filename, &input, extend_reads) {
         Ok(x) => Ok(x),
         Err(y) => Err(y.into()),
     }
@@ -300,6 +301,7 @@ pub fn calculate_coverage_sum(
     filename: &str,
     index_filename: Option<&str>,
     intervals: &PyList,
+    extend_reads: u32,
 ) -> PyResult<Vec<u64>> {
     let iv_list: &PyList = intervals.extract()?;
     let mut input = Vec::new();
@@ -324,7 +326,7 @@ pub fn calculate_coverage_sum(
     match size {
         Option::None => return Err(value_error("Intervals was empty".to_string())),
         Option::Some(size) => {
-            let covs = count_reads::calculate_coverage(filename, index_filename, &input)?;
+            let covs = count_reads::calculate_coverage(filename, index_filename, &input, extend_reads)?;
             let mut res = vec![0u64; size as usize];
             for c in covs.iter() {
                 for (ii, vi) in c.iter().enumerate() {
