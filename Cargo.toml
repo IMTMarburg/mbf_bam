@@ -29,6 +29,9 @@ features = ["extension-module"]
 
 
 [dependencies.rust-htslib]
-version = "0.38.0"
+version = "0.46.0"
+
+[dev-dependencies]
+tempfile = "3.10.1"
 #git = "https://github.com/rust-bio/rust-htslib/"
 

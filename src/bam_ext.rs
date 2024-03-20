@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn spliced_reads() {
         let mut bam = bam::Reader::from_path(
-            "../mbf_sampledata/src/mbf_sampledata/data/mbf_bam/spliced_reads.bam",
+            "sample_data/spliced_reads.bam",
         )
         .unwrap();
         let mut it = bam.records();
@@ -383,7 +383,7 @@ mod tests {
     #[test]
     fn test_introns() {
         let mut bam = bam::Reader::from_path(
-            "../mbf_sampledata/src/mbf_sampledata/data/mbf_bam/spliced_reads.bam",
+            "sample_data/spliced_reads.bam",
         )
         .unwrap();
         let mut it = bam.records();
