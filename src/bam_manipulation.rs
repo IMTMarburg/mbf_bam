@@ -1,6 +1,7 @@
 use crate::BamError;
 use bio::io::fastq;
 use flate2::read::GzDecoder;
+use rust_htslib::bam::IndexedReader;
 use rust_htslib::bam::header::HeaderRecord;
 use rust_htslib::bam::{index, record::Aux, Format, Header, Read, Reader, Record, Writer};
 use std::collections::{HashMap, HashSet};
@@ -123,15 +124,14 @@ pub fn bam_to_fastq(output_filename: &str, input_filename: &str) -> Result<(), B
 
 pub fn filter_and_rename_references(output_filename: &str, input_filename: &str, 
                                     reference_lookup: HashMap<String, Option<String>>) -> Result<(), BamError> {
-    let mut input = Reader::from_path(input_filename)?;
+    let mut input = IndexedReader::from_path(input_filename)?;
     let old_header = Header::from_template(input.header());
     let mut new_header = Header::new();
 
-    let mut tid_lookup = HashMap::new();
+    let mut tid_mapping = Vec::new();
     //remove all SQ from header, keep the rest.
     let mut new_tid = 0;
     for (key, records) in old_header.to_hashmap() {
-        dbg!(&key);
         if key != "SQ" {
             for record in records {
                 let mut rec = HeaderRecord::new(key.as_bytes());
@@ -154,7 +154,7 @@ pub fn filter_and_rename_references(output_filename: &str, input_filename: &str,
                     rec.push_tag(b"SN", new_name.to_string());
                     rec.push_tag(b"LN", (&str_len).to_string());
                     new_header.push_record(&rec);
-                    tid_lookup.insert(tid, new_tid);
+                    tid_mapping.push((tid, new_tid));
                     new_tid += 1;
                 }
                 tid += 1;
@@ -169,24 +169,31 @@ pub fn filter_and_rename_references(output_filename: &str, input_filename: &str,
     let mut rec = HeaderRecord::new(b"PG");
     rec.push_tag(b"ID", "mbf_bam.filter_and_rename_references");
     new_header.push_record(&rec);
+    dbg!(&new_header.clone().to_hashmap());
 
     if new_tid == 0 {
         return Err(BamError::UnknownError{msg:"No references left after filtering".to_string()});
     }
     //
-    let mut output = Writer::from_path(output_filename, &new_header, Format::Bam)?;
-    let mut read = Record::new();
-    while let Some(bam_result) = input.read(&mut read) {
-        bam_result?;
-        let tid = read.tid();
-        match tid_lookup.get(&tid) {
-            Some(new_tid) => {
+    {
+        let mut output = Writer::from_path(output_filename, &new_header, Format::Bam)?;
+        let mut read = Record::new();
+        let tid_lookup: HashMap<i32, i32> = tid_mapping.iter().map(|(a,b)| (*a,*b)).collect();
+        for (old_tid, new_tid) in tid_mapping.iter() {
+            input.fetch(*old_tid)?;
+            while let Some(bam_result) = input.read(&mut read) {
+                bam_result?;
                 read.set_tid(*new_tid);
+                let mtid = *&read.mtid();
+                if mtid != -1 {
+                    let new_mtid = tid_lookup.get(&mtid).unwrap_or(&-1);
+                    read.set_mtid(*new_mtid);
+                }
                 output.write(&read)?;
             }
-            None => {}
         }
-    } 
+    }
+    rust_htslib::bam::index::build(&output_filename, None, rust_htslib::bam::index::Type::Bai, 1).unwrap();
     Ok(())
 
 }
@@ -194,16 +201,18 @@ pub fn filter_and_rename_references(output_filename: &str, input_filename: &str,
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, path::PathBuf};
     use rust_htslib::bam::{Read, Reader, Record};
 
     fn count_reads(bam_filename: &str) -> Result<u32, crate::BamError> {
         let mut input = Reader::from_path(bam_filename)?;
         let mut count = 0;
         let mut read = Record::new();
+        let max_tid = input.header().target_count();
         while let Some(bam_result) = input.read(&mut read) {
             bam_result?;
             count += 1;
+            assert!(read.tid() < max_tid as i32);
         }
         Ok(count)
     }
@@ -224,7 +233,54 @@ mod tests {
          crate::bam_manipulation::filter_and_rename_references(&output_str, input, lookup).unwrap();
          assert!(output.exists());
          assert!(count_reads(output_str).unwrap() == 1);
+
+        let input = Reader::from_path(&output).unwrap();
+        assert_eq!(input.header().target_names(), vec!["1".as_bytes()]);
     }
+   #[test]
+   fn test_filter_and_rename_noop(){
+         let input = "sample_data/ex2.bam";
+         let lookup: HashMap<_,_> = vec![("chr1".to_string(), Some("chr1".to_string())), 
+                                         ("chr2".to_string(), Some("chr2".to_string())), 
+         ].into_iter().collect();
+
+        let td = tempfile::Builder::new()
+            .prefix("mbf_bam_test")
+            .tempdir()
+            .expect("could not create tempdir");
+        let output = td.path().join("test.bam");
+        let output_str = output.as_os_str().to_str().unwrap();
+         crate::bam_manipulation::filter_and_rename_references(&output_str, input, lookup).unwrap();
+         assert!(output.exists());
+         assert!(count_reads(output_str).unwrap() == 8);
+
+        let input = Reader::from_path(&output).unwrap();
+        assert_eq!(input.header().target_names(), vec!["chr1".as_bytes(), "chr2".as_bytes()]);
+    }
+
+
+   #[test]
+   fn test_filter_and_rename_none(){
+         let input = "sample_data/ex2.bam";
+         let lookup: HashMap<_,_> = vec![("chr1".to_string(), Some("1".to_string())), 
+                                         ("chr2".to_string(), None),
+         ].into_iter().collect();
+
+        let td = tempfile::Builder::new()
+            .prefix("mbf_bam_test")
+            .tempdir()
+            .expect("could not create tempdir");
+        let output = td.path().join("test.bam");
+        let output_str = output.as_os_str().to_str().unwrap();
+         crate::bam_manipulation::filter_and_rename_references(&output_str, input, lookup).unwrap();
+         assert!(output.exists());
+         assert!(count_reads(output_str).unwrap() == 1);
+
+        let input = Reader::from_path(&output).unwrap();
+        assert_eq!(input.header().target_names(), vec!["1".as_bytes()]);
+    }
+
+
     #[test]
     fn test_filter_and_rename2(){
          let input = "sample_data/ex2.bam";
@@ -233,11 +289,12 @@ mod tests {
             ("chrX".to_string(), Some("X".to_string())), //not in ther.
          ].into_iter().collect();
 
-        let td = tempfile::Builder::new()
+        /* let td = tempfile::Builder::new()
             .prefix("mbf_bam_test")
             .tempdir()
             .expect("could not create tempdir");
-        let output = td.path().join("test.bam");
+        let output = td.path().join("test.bam"); */
+         let output = PathBuf::from("test.bam");
         let output_str = output.as_os_str().to_str().unwrap();
          crate::bam_manipulation::filter_and_rename_references(&output_str, input, lookup).unwrap();
          assert!(output.exists());

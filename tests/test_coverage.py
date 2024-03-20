@@ -1,8 +1,11 @@
 import numpy as np
 import pytest
-from mbf_sampledata import get_sample_path
 from mbf_bam import calculate_coverage, calculate_coverage_sum
+from pathlib import Path
 
+
+def get_sample_path(name):
+    return Path(name.replace('mbf_align','../sample_data'))
 
 class TestCoverage:
     def test_simple(self):

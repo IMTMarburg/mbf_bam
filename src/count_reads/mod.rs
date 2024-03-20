@@ -32,11 +32,11 @@ pub fn build_tree(iv_obj: &PyAny) -> Result<(OurTree, Vec<String>), PyErr> {
     let mut gene_ids = Vec::new();
     for (gene_no, iv_entry_obj) in iv_list.iter().enumerate() {
         let iv_tuple: &PyTuple = iv_entry_obj.extract()?;
-        let lgene_id: String = iv_tuple.get_item(0).extract()?;
+        let lgene_id: String = iv_tuple.get_item(0)?.extract()?;
         gene_ids.push(lgene_id);
-        let lstrand: i8 = iv_tuple.get_item(1).extract()?;
-        let lstart: &PyList = iv_tuple.get_item(2).extract()?;
-        let lend: &PyList = iv_tuple.get_item(3).extract()?;
+        let lstrand: i8 = iv_tuple.get_item(1)?.extract()?;
+        let lstart: &PyList = iv_tuple.get_item(2)?.extract()?;
+        let lend: &PyList = iv_tuple.get_item(3)?.extract()?;
         for (ls, le) in lstart.iter().zip(lend.iter()) {
             let ls: u32 = ls.extract()?;
             let le: u32 = le.extract()?;

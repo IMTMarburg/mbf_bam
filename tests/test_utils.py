@@ -1,9 +1,11 @@
-from mbf_bam import reheader_and_rename_chromosomes, job_reheader_and_rename_chromosomes
+from mbf_bam import reheader_and_rename_chromosomes, job_reheader_and_rename_chromosomes, job_filter_and_rename
 from pathlib import Path
 import pysam
-from mbf_sampledata import get_sample_path
 import pypipegraph as ppg
 import pytest
+
+def get_sample_path(name):
+    return Path(name.replace('mbf_align','../../../sample_data'))
 
 
 class TestReheader:
@@ -32,7 +34,6 @@ class TestReheader:
 class TestSubtract:
 
     def test_subtract_subset(self, new_pipegraph):
-        from mbf_sampledata import get_sample_path
         from mbf_bam import subtract_bam
 
         input = get_sample_path("mbf_align/chipseq_chr22.bam")
@@ -45,3 +46,35 @@ class TestSubtract:
         should = 80495
         total = sum((x.total for x in f.get_index_statistics()))
         assert should == total
+
+
+class TestFilterAnd_Rename:
+
+    def test_filter_and_rename_ommited(self, new_pipegraph):
+        ppg.util.global_pipegraph.quiet = False
+        input = get_sample_path("mbf_align/ex2.bam")
+        output = "out.bam"
+        job_filter_and_rename(
+            input, output, {#"chr1": None, 
+                            "chr2": "sha"}
+        )
+        ppg.run_pipegraph()
+        assert Path("out.bam").exists()
+        f = pysam.Samfile("out.bam")
+        assert set(f.references) == set(["sha"])
+        assert len(list(f.fetch("sha"))) == 7
+
+    def test_filter_and_rename_None(self, new_pipegraph):
+        ppg.util.global_pipegraph.quiet = False
+        input = get_sample_path("mbf_align/ex2.bam")
+        output = "out.bam"
+        job_filter_and_rename(
+            input, output, {"chr1": None, 
+                            "chr2": "sha"}
+        )
+        ppg.run_pipegraph()
+        assert Path("out.bam").exists()
+        f = pysam.Samfile("out.bam")
+        assert set(f.references) == set(["sha"])
+        assert len(list(f.fetch("sha"))) == 7
+

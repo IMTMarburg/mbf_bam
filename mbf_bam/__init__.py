@@ -5,6 +5,7 @@ try:  # we need to ignore the import error (module not build) for poetry to be a
     import pysam
     import tempfile
 except ImportError:
+    raise
     pass
 
 
@@ -45,4 +46,30 @@ def job_reheader_and_rename_chromosomes(input_bam_path, output_bam_path, replace
         ),
     )
 
-__version__ = '0.2.0'
+
+def job_filter_and_rename(input_bam_path, output_bam_path, replacements):
+    """Filter a BAM to those in replacements. Also rename the references
+    to the string in replacement. Reads with missing references are ommited.
+    So are reads where the replacement reference is None """
+    input_path_bam = Path(input_bam_path)
+    output_bam_path = Path(output_bam_path)
+
+    def do_replace(replacements=replacements):
+        filter_bam_and_rename_references(
+            str(output_bam_path), str(input_bam_path), replacements
+        )
+        pysam.index(str(output_bam_path))
+
+    output_bam_path.parent.mkdir(exist_ok=True, parents=True)
+    return ppg.MultiFileGeneratingJob(
+        [output_bam_path, output_bam_path.with_suffix(".bam.bai")], do_replace,
+        rename_broken=True
+    ).depends_on(
+        ppg.FileInvariant(input_bam_path),
+        ppg.FunctionInvariant(
+            "mbf_bam.filter_bam_and_rename_references", filter_bam_and_rename_references
+        ),
+    )
+
+
+__version__ = "0.4.0"

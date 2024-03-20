@@ -43,25 +43,37 @@
     # pass in nixpkgs, mach-nix and what you want it to report back as a version
     mach-nix-build-python-package = build_mbf_bam;
 
-    devShell.x86_64-linux = npkgs.mkShell {
-      # be sure to set this back in your build scripts,
-      # otherwise pyo3 will get recompiled all the time
-      CARGO_TARGET_DIR = "target_rust_analyzer";
+    devShell.x86_64-linux = let
+      pypipegraph = npkgs.python3Packages.buildPythonPackage rec {
+        pname = "pypipegraph";
+        version = "0.197";
+        src = npkgs.fetchPypi {
+          inherit pname;
+          inherit version;
+          sha256 = "sha256-x7UiibWXcCsLwJNKcYWMXHsqt3pCIbv5NoQdx6iD+2o";
+        };
+        checkPhase = ":";
+      };
+    in
+      npkgs.mkShell {
+        # be sure to set this back in your build scripts,
+        # otherwise pyo3 will get recompiled all the time
+        CARGO_TARGET_DIR = "target_rust_analyzer";
 
-      nativeBuildInputs = [
-        npkgs.rustc
-        npkgs.cargo
-        npkgs.cargo-binutils
-        npkgs.rust-analyzer
-        npkgs.git
-        npkgs.cargo-udeps
-        npkgs.cargo-audit
-        npkgs.cargo-vet
-        npkgs.cargo-outdated
-        npkgs.bacon
-        npkgs.maturin
-        (npkgs.python3.withPackages (p: [p.pytest p.pytest-cov p.pandas p.tomlkit]))
-      ];
-    };
+        nativeBuildInputs = [
+          npkgs.rustc
+          npkgs.cargo
+          npkgs.cargo-binutils
+          npkgs.rust-analyzer
+          npkgs.git
+          npkgs.cargo-udeps
+          npkgs.cargo-audit
+          npkgs.cargo-vet
+          npkgs.cargo-outdated
+          npkgs.bacon
+          npkgs.maturin
+          (npkgs.python3.withPackages (p: [p.pytest p.pytest-cov p.pandas p.tomlkit pypipegraph p.pysam]))
+        ];
+      };
   };
 }

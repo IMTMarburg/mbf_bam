@@ -108,6 +108,7 @@ fn py_intervals_to_trees(
 
 /// python wrapper for py_count_reads_unstranded
 #[pyfunction]
+#[pyo3(signature = (filename, index_filename, intervals, gene_intervals, each_read_counts_once=false)) ]
 pub fn count_reads_unstranded(
     filename: &str,
     index_filename: Option<&str>,
@@ -131,6 +132,7 @@ pub fn count_reads_unstranded(
 
 /// python wrapper for py_count_reads_stranded
 #[pyfunction]
+#[pyo3(signature = (filename, index_filename, intervals, gene_intervals, each_read_counts_once=false, matching_reads_output_bam_filename=None)) ]
 pub fn count_reads_stranded(
     filename: &str,
     index_filename: Option<&str>,
@@ -156,6 +158,7 @@ pub fn count_reads_stranded(
 }
 // python wrapper for py_count_reads_unstranded
 #[pyfunction]
+#[pyo3(signature = (filename, index_filename, intervals, gene_intervals, umi_strategy)) ]
 pub fn count_reads_primary_only_right_strand_only_by_barcode(
     filename: &str,
     index_filename: Option<&str>,
@@ -219,6 +222,7 @@ pub fn subtract_bam(
 
 /// python wrapper for py_quantify_gene_reads
 #[pyfunction]
+#[pyo3(signature = (filename, index_filename, intervals, gene_intervals))]
 pub fn quantify_gene_reads(
     filename: &str,
     index_filename: Option<&str>,
@@ -264,12 +268,26 @@ pub fn bam_to_fastq(output_filename: &str, input_filename: &str) -> PyResult<()>
         Err(y) => return Err(y.into()),
     }
 }
-
+///
+/// python wrapper for bam_manipulation::filter_and_rename_references(
+#[pyfunction]
+pub fn filter_bam_and_rename_references(
+    output_filename: &str,
+    input_filename: &str,
+    reference_lookup: HashMap<String, Option<String>>
+) -> PyResult<()> {
+    match bam_manipulation::filter_and_rename_references(output_filename, input_filename, reference_lookup) {
+        Ok(x) => Ok(x),
+        Err(y) => return Err(y.into()),
+    }
+}
+ 
 /// python wrapper for calculate_coverage
 /// ie. read coverage at each basepair.
 /// filename/index_filename point to a .bam/.bai
 /// intervals must be a list of tuples (chr, start, stop, flip(bool))
 #[pyfunction]
+#[pyo3(signature = (filename, index_filename, intervals, extend_reads=0))]
 pub fn calculate_coverage(
     filename: &str,
     index_filename: Option<&str>,
@@ -280,10 +298,10 @@ pub fn calculate_coverage(
     let mut input = Vec::new();
     for iv_entry_obj in iv_list.iter() {
         let iv_tuple: &PyTuple = iv_entry_obj.extract()?;
-        let chr: &str = iv_tuple.get_item(0).extract()?;
-        let start: i64 = iv_tuple.get_item(1).extract()?;
-        let stop: i64 = iv_tuple.get_item(2).extract()?;
-        let flip: bool = iv_tuple.get_item(3).extract()?;
+        let chr: &str = iv_tuple.get_item(0)?.extract()?;
+        let start: i64 = iv_tuple.get_item(1)?.extract()?;
+        let stop: i64 = iv_tuple.get_item(2)?.extract()?;
+        let flip: bool = iv_tuple.get_item(3)?.extract()?;
         let iv = count_reads::Interval::new(chr, start, stop, flip);
         input.push(iv);
     }
@@ -297,6 +315,7 @@ pub fn calculate_coverage(
 /// then sum over all the intervals.
 /// requires that all intervals are the same length.
 #[pyfunction]
+#[pyo3(signature = (filename, index_filename, intervals, extend_reads=0))]
 pub fn calculate_coverage_sum(
     filename: &str,
     index_filename: Option<&str>,
@@ -308,10 +327,10 @@ pub fn calculate_coverage_sum(
     let mut size: Option<i64> = None;
     for iv_entry_obj in iv_list.iter() {
         let iv_tuple: &PyTuple = iv_entry_obj.extract()?;
-        let chr: &str = iv_tuple.get_item(0).extract()?;
-        let start: i64 = iv_tuple.get_item(1).extract()?;
-        let stop: i64 = iv_tuple.get_item(2).extract()?;
-        let flip: bool = iv_tuple.get_item(3).extract()?;
+        let chr: &str = iv_tuple.get_item(0)?.extract()?;
+        let start: i64 = iv_tuple.get_item(1)?.extract()?;
+        let stop: i64 = iv_tuple.get_item(2)?.extract()?;
+        let flip: bool = iv_tuple.get_item(3)?.extract()?;
         let iv = count_reads::Interval::new(chr, start, stop, flip);
         match size {
             Option::None => size = Some(stop - start),
@@ -352,6 +371,7 @@ fn mbf_bam(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(quantify_gene_reads))?;
     m.add_wrapped(wrap_pyfunction!(annotate_barcodes_from_fastq))?;
     m.add_wrapped(wrap_pyfunction!(bam_to_fastq))?;
+    m.add_wrapped(wrap_pyfunction!(filter_bam_and_rename_references))?;
     m.add_wrapped(wrap_pyfunction!(calculate_coverage))?;
     m.add_wrapped(wrap_pyfunction!(calculate_coverage_sum))?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
