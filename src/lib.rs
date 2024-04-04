@@ -10,6 +10,7 @@ use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::wrap_pyfunction;
 use pyo3::{exceptions, PyErr, PyResult};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 mod bam_ext;
 mod bam_manipulation;
@@ -357,6 +358,12 @@ pub fn calculate_coverage_sum(
     }
 }
 
+#[pyfunction]
+pub fn fix_sorting_to_be_deterministic(input_filename: PathBuf, output_filename: PathBuf) -> PyResult<()> {
+    Ok(bam_manipulation::fix_sorting_to_be_deterministic(&input_filename.as_os_str().to_string_lossy(), 
+                                                         &output_filename.as_os_str().to_string_lossy())?)
+}
+
 /// This module is a python module implemented in Rust.
 #[pymodule]
 fn mbf_bam(_py: Python, m: &PyModule) -> PyResult<()> {
@@ -372,6 +379,7 @@ fn mbf_bam(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(annotate_barcodes_from_fastq))?;
     m.add_wrapped(wrap_pyfunction!(bam_to_fastq))?;
     m.add_wrapped(wrap_pyfunction!(filter_bam_and_rename_references))?;
+    m.add_wrapped(wrap_pyfunction!(fix_sorting_to_be_deterministic))?;
     m.add_wrapped(wrap_pyfunction!(calculate_coverage))?;
     m.add_wrapped(wrap_pyfunction!(calculate_coverage_sum))?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;

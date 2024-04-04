@@ -198,6 +198,45 @@ pub fn filter_and_rename_references(output_filename: &str, input_filename: &str,
 
 }
 
+/// take a 'samtools sort' or equivalent sorted bam file
+/// (which is by reference coordinate, but 'stable-with-regards-to-input-order' for reads with the
+/// same position)
+/// and turn it into a deterministic sort by sorting by read name 
+/// This is necessary for example for subread.
+pub fn fix_sorting_to_be_deterministic(input_filename: &str, output_filename: &str) -> Result<(), crate::BamError> {
+    let mut input = Reader::from_path(input_filename)?;
+    let header = Header::from_template(input.header());
+    let mut output = Writer::from_path(output_filename, &header, Format::Bam)?;
+    let mut read = Record::new();
+    let mut current_pos = 0;
+    let mut current_ref = -1;
+    let mut current_reads = Vec::new();
+
+    let flush_reads = |current_reads: &mut Vec<Record>, output: &mut Writer| -> Result<(), crate::BamError>{
+            current_reads.sort_by(|a,b| a.qname().cmp(b.qname()));
+            for r in current_reads.drain(..) {
+                output.write(&r)?;
+            }
+            Ok(())
+    };
+
+    while let Some(bam_result) = input.read(&mut read) {
+            bam_result?;
+            if read.pos() < current_pos && read.tid() == current_ref {
+                return Err(crate::BamError::UnknownError{msg:"Input bam file not sorted by reference coordinate".to_string()});
+            }
+            if read.tid() != current_ref || read.pos() != current_pos {
+                current_pos = read.pos();
+                current_ref = read.tid();
+                flush_reads(&mut current_reads, &mut output)?;
+            }
+            current_reads.push(read.clone());
+    }
+    flush_reads(&mut current_reads, &mut output)?;
+    Ok(())
+
+}
+
 
 #[cfg(test)]
 mod tests {

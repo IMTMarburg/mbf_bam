@@ -72,4 +72,4 @@ def job_filter_and_rename(input_bam_path, output_bam_path, replacements):
     )
 
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

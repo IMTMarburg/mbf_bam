@@ -60,3 +60,5 @@ benchmarks/_*/
 target/*
 pip-wheel-metadata
 target_rust_analyzer/*
+tests/target_rust_analyzer/*
+

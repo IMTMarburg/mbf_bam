@@ -1,11 +1,17 @@
-from mbf_bam import reheader_and_rename_chromosomes, job_reheader_and_rename_chromosomes, job_filter_and_rename
+from mbf_bam import (
+    reheader_and_rename_chromosomes,
+    job_reheader_and_rename_chromosomes,
+    job_filter_and_rename,
+    fix_sorting_to_be_deterministic
+)
 from pathlib import Path
 import pysam
 import pypipegraph as ppg
 import pytest
 
+
 def get_sample_path(name):
-    return Path(name.replace('mbf_align','../../../sample_data'))
+    return Path(name.replace("mbf_align", "../../../sample_data"))
 
 
 class TestReheader:
@@ -31,8 +37,8 @@ class TestReheader:
         assert not Path("out.bam").exists()
         assert "No replacement happened" in str(j.exception)
 
-class TestSubtract:
 
+class TestSubtract:
     def test_subtract_subset(self, new_pipegraph):
         from mbf_bam import subtract_bam
 
@@ -49,15 +55,11 @@ class TestSubtract:
 
 
 class TestFilterAnd_Rename:
-
     def test_filter_and_rename_ommited(self, new_pipegraph):
         ppg.util.global_pipegraph.quiet = False
         input = get_sample_path("mbf_align/ex2.bam")
         output = "out.bam"
-        job_filter_and_rename(
-            input, output, {#"chr1": None, 
-                            "chr2": "sha"}
-        )
+        job_filter_and_rename(input, output, {"chr2": "sha"})  # "chr1": None,
         ppg.run_pipegraph()
         assert Path("out.bam").exists()
         f = pysam.Samfile("out.bam")
@@ -68,13 +70,77 @@ class TestFilterAnd_Rename:
         ppg.util.global_pipegraph.quiet = False
         input = get_sample_path("mbf_align/ex2.bam")
         output = "out.bam"
-        job_filter_and_rename(
-            input, output, {"chr1": None, 
-                            "chr2": "sha"}
-        )
+        job_filter_and_rename(input, output, {"chr1": None, "chr2": "sha"})
         ppg.run_pipegraph()
         assert Path("out.bam").exists()
         f = pysam.Samfile("out.bam")
         assert set(f.references) == set(["sha"])
         assert len(list(f.fetch("sha"))) == 7
+
+
+class TestFixSort:
+    def test_semi_sorted(self, new_pipegraph):
+        input = get_sample_path("mbf_align/subread_semi_sorted.bam")
+        output = "output.bam"
+        fix_sorting_to_be_deterministic(input, output)
+        assert Path(output).exists()
+        pysam.index(output)  # that must work...
+        last = None
+
+        f = pysam.Samfile(input)
+        violations = 0
+        for read in f.fetch("1"):
+            if last:
+                if not ((last.pos < read.pos) or (
+                    (last.pos == read.pos) and (last.query_name < read.query_name)
+                )):
+                    violations += 1
+            last = read
+        assert violations > 0  # so that we are actually testing something.
+
+        f = pysam.Samfile(output)
+        last = None
+        for read in f.fetch("1"):
+            print(read.pos)
+            if last:
+                assert (last.pos < read.pos) or (
+                    (last.pos == read.pos) and (last.query_name < read.query_name)
+                )
+            last = read
+
+    def test_spliced(self, new_pipegraph):
+        input = get_sample_path("mbf_align/spliced_reads.bam")
+        output = "output.bam"
+        fix_sorting_to_be_deterministic(input, output)
+        assert Path(output).exists()
+        last = None
+
+        f = pysam.Samfile(input)
+        violations = 0
+        for read in f.fetch(until_eof=True):
+            if last:
+                if last.tid != read.tid:
+                    if not (last.pos < read.pos) or (
+                        (last.pos == read.pos) and (last.query_name < read.query_name)
+                    ):
+                        violations += 1
+            last = read
+        #assert violations > 0  # so that we are actually testing something.
+
+        f = pysam.Samfile(output)
+        for read in f.fetch(until_eof=True):
+            if last:
+                if last.tid != read.tid:
+                    assert (last.pos < read.pos) or (
+                        (last.pos == read.pos) and (last.query_name < read.query_name)
+                    )
+            last = read
+        pysam.index(output)  # that must work...
+
+    def test_unsorted_raises(self):
+        input = get_sample_path("mbf_align/unsorted.bam")
+        output = "output.bam"
+        with pytest.raises(ValueError):
+            fix_sorting_to_be_deterministic(input, output)
+        assert not Path(output).exists()
 
