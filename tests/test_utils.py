@@ -2,11 +2,12 @@ from mbf_bam import (
     reheader_and_rename_chromosomes,
     job_reheader_and_rename_chromosomes,
     job_filter_and_rename,
-    fix_sorting_to_be_deterministic
+    fix_sorting_to_be_deterministic,
 )
 from pathlib import Path
 import pysam
 import pypipegraph as ppg
+import shutil
 import pytest
 
 
@@ -91,12 +92,32 @@ class TestFixSort:
         violations = 0
         for read in f.fetch("1"):
             if last:
-                if not ((last.pos < read.pos) or (
-                    (last.pos == read.pos) and (last.query_name < read.query_name)
-                )):
+                if not (
+                    (last.pos < read.pos)
+                    or ((last.pos == read.pos) and (last.query_name < read.query_name))
+                ):
                     violations += 1
             last = read
         assert violations > 0  # so that we are actually testing something.
+
+        f = pysam.Samfile(output)
+        last = None
+        for read in f.fetch("1"):
+            print(read.pos)
+            if last:
+                assert (last.pos < read.pos) or (
+                    (last.pos == read.pos) and (last.query_name < read.query_name)
+                )
+            last = read
+
+    def test_semi_sorted_but_no_index(self, new_pipegraph):
+        real_input = get_sample_path("mbf_align/subread_semi_sorted.bam")
+        input = "input.bam"
+        shutil.copy(real_input, input)
+        output = "output.bam"
+        fix_sorting_to_be_deterministic(input, output)
+        assert Path(output).exists()
+        pysam.index(output)  # that must work...
 
         f = pysam.Samfile(output)
         last = None
@@ -125,7 +146,7 @@ class TestFixSort:
                     ):
                         violations += 1
             last = read
-        #assert violations > 0  # so that we are actually testing something.
+        # assert violations > 0  # so that we are actually testing something.
 
         f = pysam.Samfile(output)
         for read in f.fetch(until_eof=True):
@@ -143,4 +164,3 @@ class TestFixSort:
         with pytest.raises(ValueError):
             fix_sorting_to_be_deterministic(input, output)
         assert not Path(output).exists()
-
