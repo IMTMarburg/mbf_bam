@@ -1,6 +1,7 @@
 [build-system]
-requires = ["maturin>=0.13,<0.14", 'setuptools_rust', 'setuptools']
+requires = ["maturin>=0.13", 'setuptools_rust', 'setuptools']
 build-backend = "maturin"
 
 [tool.maturin]
 sdist-include = ["src/mbf_bam"]
+python-source = "src"

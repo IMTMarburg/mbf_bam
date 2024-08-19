@@ -201,7 +201,7 @@ pub fn filter_and_rename_references(output_filename: &str, input_filename: &str,
 /// take a 'samtools sort' or equivalent sorted bam file
 /// (which is by reference coordinate, but 'stable-with-regards-to-input-order' for reads with the
 /// same position)
-/// and turn it into a deterministic sort by sorting by read name 
+/// and turn it into a deterministic sort by sorting by (read.pos, read.name)
 /// This is necessary for example for subread.
 pub fn fix_sorting_to_be_deterministic(input_filename: &str, output_filename: &str) -> Result<(), crate::BamError> {
     let mut input = Reader::from_path(input_filename)?;
