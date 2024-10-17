@@ -4,11 +4,13 @@ mod counters;
 mod introns;
 mod quantify;
 mod coverage;
+mod by_position;
 
 pub use counters::{py_count_reads_stranded, py_count_reads_unstranded};
 pub use introns::{py_count_introns, IntronResult};
 pub use quantify::py_quantify_gene_reads;
 pub use coverage::{calculate_coverage, Interval};
+pub use by_position::{py_count_positions, PositionCountResult};
 
 use bio::data_structures::interval_tree::IntervalTree;
 use pyo3::prelude::*;

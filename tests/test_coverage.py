@@ -1,11 +1,12 @@
 import numpy as np
 import pytest
-from mbf_bam import calculate_coverage, calculate_coverage_sum
+from mbf_bam import calculate_coverage, calculate_coverage_sum, count_positions
 from pathlib import Path
 
 
 def get_sample_path(name):
-    return Path(name.replace('mbf_align','../sample_data'))
+    return Path(name.replace("mbf_align", "../sample_data"))
+
 
 class TestCoverage:
     def test_simple(self):
@@ -87,7 +88,6 @@ class TestCoverage:
         assert (npf.sum(axis=0) == forward_sum).all()
 
     def test_cov_sum_raises_on_unequal_sizes(self):
-
         input = str(get_sample_path("mbf_align/chipseq_chr22.bam"))
         intervals = [
             ("chr22", 0, 1000, False),
@@ -110,3 +110,50 @@ class TestCoverage:
         assert np.sum(forward[0]) > 0
         assert np.sum(forward[1]) > 0
         assert np.sum(forward[0]) == np.sum(forward[1])
+
+
+class TestPosition:
+    def test_one_chr(self):
+        input = str(get_sample_path("mbf_align/chipseq_chr22.bam"))
+        by_chr = count_positions(input, None)
+        for chr, v in by_chr.items():
+            if chr == 'chr22':
+                assert v == 80527
+            else:
+                assert v == 0
+        assert len(by_chr) > 1
+
+    def test_multiple_chr(self):
+        input = str(get_sample_path("mbf_align/ex2.bam"))
+        by_chr = count_positions(input, None)
+        assert sum(by_chr.values()) == 5
+        for chr, v in by_chr.items():
+            if chr == 'chr1':
+                assert v == 1
+            elif chr == 'chr2':
+                assert v == 4
+            else:
+                assert v == 0
+        assert len(by_chr) > 1
+
+    def test_unmapped(self):
+        # we don't count unmapped
+        input = str(get_sample_path("mbf_align/chipseq_chr22_subset_plus_unmapped.bam"))
+        by_chr = count_positions(input, None)
+        for chr, v in by_chr.items():
+            if chr == 'chr22':
+                assert v == 472
+            else:
+                assert v == 0
+        assert len(by_chr) > 1
+
+    def test_subread_semisorted(self):
+        input = str(get_sample_path("mbf_align/subread_semi_sorted.bam")) # that's pos sorted, but not query name sorted.
+        by_chr = count_positions(input, None)
+        print(by_chr)
+        for chr, v in by_chr.items():
+            if chr == '1':
+                assert v == 76353
+            else:
+                assert v == 0
+        assert len(by_chr) > 1

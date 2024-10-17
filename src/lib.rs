@@ -202,6 +202,20 @@ pub fn count_introns(
     };
     Ok(res)
 }
+
+/// python wrapper for py_count_positions(
+#[pyfunction]
+pub fn count_positions(
+    filename: &str,
+    index_filename: Option<&str>,
+) -> PyResult<count_reads::PositionCountResult> {
+    let res = match count_reads::py_count_positions(filename, index_filename) {
+        Ok(x) => x,
+        Err(y) => return Err(y.into()),
+    };
+    Ok(res)
+}
+
 ///
 /// python wrapper for py_substract_bam
 #[pyfunction]
@@ -358,6 +372,9 @@ pub fn calculate_coverage_sum(
     }
 }
 
+
+
+
 #[pyfunction]
 pub fn fix_sorting_to_be_deterministic(input_filename: PathBuf, output_filename: PathBuf) -> PyResult<()> {
     Ok(bam_manipulation::fix_sorting_to_be_deterministic(&input_filename.as_os_str().to_string_lossy(), 
@@ -374,6 +391,7 @@ fn mbf_bam(_py: Python, m: &PyModule) -> PyResult<()> {
         count_reads_primary_only_right_strand_only_by_barcode
     ))?;
     m.add_wrapped(wrap_pyfunction!(count_introns))?;
+    m.add_wrapped(wrap_pyfunction!(count_positions))?;
     m.add_wrapped(wrap_pyfunction!(subtract_bam))?;
     m.add_wrapped(wrap_pyfunction!(quantify_gene_reads))?;
     m.add_wrapped(wrap_pyfunction!(annotate_barcodes_from_fastq))?;

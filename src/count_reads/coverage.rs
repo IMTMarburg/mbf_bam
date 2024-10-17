@@ -32,7 +32,7 @@ type Counts = Vec<u32>;
 
 /// Calculate a coverage vector over a list of intervals
 /// Intervals may be of unequal size.
-/// one point per abse actually in a read
+/// one point per base actually in a read
 /// no extension etc.
 pub fn calculate_coverage(
     bam_filename: impl AsRef<Path>,
