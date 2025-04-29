@@ -209,7 +209,7 @@ pub fn fix_sorting_to_be_deterministic(input_filename: &str, output_filename: &s
     let mut output = Writer::from_path(output_filename, &header, Format::Bam)?;
     let mut read = Record::new();
     let mut current_pos = 0;
-    let mut current_ref = -1;
+    let mut current_ref = -2;
     let mut current_reads = Vec::new();
 
     let flush_reads = |current_reads: &mut Vec<Record>, output: &mut Writer| -> Result<(), crate::BamError>{
