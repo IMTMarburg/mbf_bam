@@ -51,7 +51,11 @@ fn count_reads_in_region_unstranded(
         if !skipped {
             let blocks = read.blocks();
             for iv in blocks.iter() {
-                if (iv.1 < start) || iv.0 >= stop || ((iv.0 < start) && (iv.1 >= start)) {
+                /* 
+                * This is double filtering reads, first by their read.pos(),
+                * and then again if the block in outside of the chunk.
+                * but that means that chunk spanning reads never get counted
+                * if (iv.1 < start) || iv.0 >= stop || ((iv.0 < start) && (iv.1 >= start)) {
                     // if this block is outside of the region
                     // don't count it at all.
                     // if it is on a block boundary
@@ -59,7 +63,7 @@ fn count_reads_in_region_unstranded(
                     // which is ok, since we place the blocks to the right
                     // of our intervals.
                     continue;
-                }
+                } */
                 for r in tree.find(iv.0..iv.1) {
                     hit = true;
                     let entry = r.data();
