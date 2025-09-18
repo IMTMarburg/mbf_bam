@@ -284,7 +284,14 @@ pub fn py_count_reads_unstranded(
                         let mut res = HashMap::new();
                         for (gene_no, cnt) in counts.0.iter().enumerate() {
                             let gene_id = &gene_ids[gene_no];
-                            res.insert(gene_id.to_string(), *cnt);
+                            match res.entry(gene_id.to_string()) {
+                                std::collections::hash_map::Entry::Occupied(mut e) => {
+                                    *e.get_mut() += *cnt
+                                }
+                                std::collections::hash_map::Entry::Vacant(e) => {
+                                    e.insert(*cnt);
+                                }
+                            }
                             total += cnt;
                         }
                         outside += counts.1;
